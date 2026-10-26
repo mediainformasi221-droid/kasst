@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEM INFORMASI KAS HASIL SURAT TUGAS (KAS-ST)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            500: '#334e68',
+                            800: '#102a43',
+                            900: '#0b1b2b',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="flex flex-col min-h-screen">
+        <!-- Auth Screen / Rendered Dynamically -->
+    </div>
+
+    <!-- MODALS CONTAINER -->
+    <div id="modal-container"></div>
+
+    <!-- APPLICATION SCRIPT -->
+    <script>
+        // ==========================================
+        // STATE MANAGEMENT & INITIAL DATA
+        // ==========================================
+        const DEFAULT_STATE = {
+            currentUser: null, // { name, role: 'admin'|'viewer', email }
+            // Master Pegawai List
+            pegawaiList: [
+                "Budi Santoso",
+                "Siti Rahma",
+                "Ahmad Dahlan",
+                "Rudi Hermawan",
+                "Dewi Lestari",
+                "Eko Prasetyo"
+            ],
+            settings: {
+                tarifLuarKota: 20000,
+                tarifDalamKota: 10000,
+                effectiveDate: new Date().toISOString().split('T')[0],
+                briAccountName: "BENDAHARA KAS ST",
+                briAccountNumber: "5829-01-002849-53-1",
+                briBankName: "BANK RAKYAT INDONESIA (BRI)",
+                qrisMerchant: "KAS OPERASIONAL SURAT TUGAS",
+                qrisImageUrl: "https://placehold.co/300x300/102a43/ffffff?text=QRIS+KAS-ST"
+            },
+            suratTugas: [
+                { id: "ST-2026-001", nomor: "ST/102/I/2026", pelaksana: "Budi Santoso", tanggal: "2026-01-10", pelaksanaan: "2026-01-12", uraian: "Pemeriksaan Lapangan Lapangan A", jenis: "Luar Kota", tarif: 20000, alokasi: 20000, metode: "BRI", ref: "TRX-88201", status: "Sudah Dibayar", lampiran: "st102.pdf" },
+                { id: "ST-2026-002", nomor: "ST/105/I/2026", pelaksana: "Siti Rahma", tanggal: "2026-01-14", pelaksanaan: "2026-01-15", uraian: "Koordinasi Wilayah Dalam Kota", jenis: "Dalam Kota", tarif: 10000, alokasi: 10000, metode: "QRIS", ref: "QR-90112", status: "Sudah Dibayar", lampiran: null },
+                { id: "ST-2026-003", nomor: "ST/108/I/2026", pelaksana: "Ahmad Dahlan", tanggal: "2026-01-20", pelaksanaan: "2026-01-22", uraian: "Supervisi Proyek Daerah B", jenis: "Luar Kota", tarif: 20000, alokasi: 20000, metode: "BRI", ref: "TRX-88390", status: "Sudah Dibayar", lampiran: "st108.pdf" },
+                { id: "ST-2026-004", nomor: "ST/112/I/2026", pelaksana: "Rudi Hermawan", tanggal: "2026-01-25", pelaksanaan: "2026-01-26", uraian: "Rapat Koordinasi Balai Kota", jenis: "Dalam Kota", tarif: 10000, alokasi: 10000, metode: "BRI", ref: "TRX-88410", status: "Menunggu Verifikasi Admin", lampiran: null }
+            ],
+            transactions: [
+                { id: "TRX-001", tanggal: "2026-01-12", stNomor: "ST/102/I/2026", jenis: "Penerimaan", kategori: "Alokasi ST Luar Kota", uraian: "Pencairan Kas ST/102/I/2026", masuk: 20000, keluar: 0, metode: "BRI", ref: "TRX-88201", status: "Sah", pencatat: "Admin Kas", validator: "Bendahara Utama" },
+                { id: "TRX-002", tanggal: "2026-01-15", stNomor: "ST/105/I/2026", jenis: "Penerimaan", kategori: "Alokasi ST Dalam Kota", uraian: "Pencairan Kas ST/105/I/2026", masuk: 10000, keluar: 0, metode: "QRIS", ref: "QR-90112", status: "Sah", pencatat: "Admin Kas", validator: "Bendahara Utama" },
+                { id: "TRX-003", tanggal: "2026-01-18", stNomor: "-", jenis: "Pengeluaran", kategori: "Konsumsi & Operasional", uraian: "Pembelian ATK dan Konsumsi Rapat ST", masuk: 0, keluar: 12000, metode: "Cash", ref: "KW-001", status: "Sah", pencatat: "Admin Kas", validator: "Bendahara Utama" },
+                { id: "TRX-004", tanggal: "2026-01-22", stNomor: "ST/108/I/2026", jenis: "Penerimaan", kategori: "Alokasi ST Luar Kota", uraian: "Pencairan Kas ST/108/I/2026", masuk: 20000, keluar: 0, metode: "BRI", ref: "TRX-88390", status: "Sah", pencatat: "Admin Kas", validator: "Bendahara Utama" },
+                { id: "TRX-005", tanggal: "2026-01-28", stNomor: "-", jenis: "Penerimaan", kategori: "Alokasi ST Luar Kota", uraian: "Setoran Kas ST/115/I/2026", masuk: 20000, keluar: 0, metode: "BRI", ref: "TRX-99011", status: "Menunggu Verifikasi", pencatat: "Staf ST", validator: "-" }
+            ],
+            reconciliations: [
+                { id: "REC-001", tanggal: "2026-01-31", saldoAplikasi: 38000, saldoAktual: 38000, selisih: 0, petugas: "Admin Kas", catatan: "Sesuai dengan mutasi rekening BRI dan QRIS", status: "Match" }
+            ],
+            auditLogs: [
+                { id: "LOG-001", timestamp: "2026-01-10 09:00", user: "System", action: "Inisialisasi Sistem", detail: "Aplikasi KAS-ST dimulai dengan tarif dasar Rp20k/10k." },
+                { id: "LOG-002", timestamp: "2026-01-12 10:15", user: "Admin Kas", action: "Validasi Transaksi", detail: "Mengesahkan TRX-001 nominal Rp20.000" }
+            ],
+            activeView: 'dashboard'
+        };
+
+        // Load State from LocalStorage or Default
+        let state = JSON.parse(localStorage.getItem('KAS_ST_APP_STATE')) || DEFAULT_STATE;
+        
+        // Ensure pegawaiList exists on legacy state loads
+        if (!state.pegawaiList) {
+            state.pegawaiList = ["Budi Santoso", "Siti Rahma", "Ahmad Dahlan", "Rudi Hermawan", "Dewi Lestari"];
+        }
+
+        function saveState() {
+            localStorage.setItem('KAS_ST_APP_STATE', JSON.stringify(state));
+            renderApp();
+        }
+
+        function logAudit(action, detail) {
+            const newLog = {
+                id: `LOG-${Date.now()}`,
+                timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                user: state.currentUser ? `${state.currentUser.name} (${state.currentUser.role})` : 'Sistem',
+                action: action,
+                detail: detail
+            };
+            state.auditLogs.unshift(newLog);
+        }
+
+        // Helper Formatters
+        const formatRupiah = (number) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number || 0);
+        };
+
+        // Sidebar Toggle Helper for Responsive / Mobile View
+        function toggleSidebar() {
+            const sidebar = document.getElementById('app-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar) {
+                sidebar.classList.toggle('-translate-x-full');
+            }
+            if (overlay) {
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        // Calculations
+        function calculateFinancials() {
+            const validTransactions = state.transactions.filter(t => t.status === 'Sah');
+            const totalPenerimaan = validTransactions.reduce((acc, t) => acc + (t.masuk || 0), 0);
+            const totalPengeluaran = validTransactions.reduce((acc, t) => acc + (t.keluar || 0), 0);
+            const saldoKas = totalPenerimaan - totalPengeluaran;
+
+            const stDalamKotaCount = state.suratTugas.filter(s => s.jenis === 'Dalam Kota').length;
+            const stLuarKotaCount = state.suratTugas.filter(s => s.jenis === 'Luar Kota').length;
+
+            const totalAlokasiST = state.suratTugas.reduce((acc, s) => acc + (s.alokasi || 0), 0);
+            const pendingTxCount = state.transactions.filter(t => t.status === 'Menunggu Verifikasi').length;
+
+            return {
+                saldoKas,
+                totalPenerimaan,
+                totalPengeluaran,
+                stDalamKotaCount,
+                stLuarKotaCount,
+                totalAlokasiST,
+                pendingTxCount
+            };
+        }
+
+        // ==========================================
+        // MAIN ROUTER & RENDER ENGINE
+        // ==========================================
+        function renderApp() {
+            const appEl = document.getElementById('app');
+            
+            if (!state.currentUser) {
+                appEl.innerHTML = renderLoginScreen();
+                if (window.lucide) lucide.createIcons();
+                return;
+            }
+
+            appEl.innerHTML = `
+                <div class="flex h-screen overflow-hidden bg-slate-100 relative">
+                    <!-- BACKDROP OVERLAY FOR MOBILE SIDEBAR -->
+                    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/60 z-30 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+
+                    <!-- SIDEBAR -->
+                    ${renderSidebar()}
+
+                    <!-- MAIN CONTENT AREA -->
+                    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+                        <!-- TOP NAVBAR -->
+                        ${renderNavbar()}
+
+                        <!-- MAIN SCROLLABLE BODY -->
+                        <main class="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar bg-slate-50">
+                            ${renderMainView()}
+                        </main>
+                    </div>
+                </div>
+            `;
+
+            if (window.lucide) lucide.createIcons();
+            initChartsIfNeeded();
+        }
+
+        // ==========================================
+        // LOGIN & AUTH SCREEN
+        // ==========================================
+        function renderLoginScreen() {
+            return `
+                <div class="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-navy-900 via-slate-900 to-navy-800 opacity-90"></div>
+                    
+                    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+                        <div class="bg-navy-900 p-6 text-center text-white border-b border-gold-500/30">
+                            <div class="inline-flex p-3 bg-gold-500/10 rounded-full mb-3 text-gold-400">
+                                <i data-lucide="wallet" class="w-10 h-10"></i>
+                            </div>
+                            <h1 class="text-xl font-bold tracking-wide">SISTEM KAS-ST</h1>
+                            <p class="text-xs text-slate-300 mt-1">Sistem Informasi Kas Hasil Surat Tugas</p>
+                        </div>
+
+                        <div class="p-6">
+                            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email / Username</label>
+                                    <input type="text" id="login-email" value="admin@kasst.go.id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:outline-none text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+                                    <input type="password" id="login-password" value="password" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:outline-none text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Peran Akses (Role)</label>
+                                    <select id="login-role" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:outline-none text-sm bg-white">
+                                        <option value="admin">Administrator (Akses Penuh)</option>
+                                        <option value="viewer">Viewer (Pemantau Dashboard)</option>
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="w-full py-2.5 bg-navy-800 hover:bg-navy-900 text-white font-semibold rounded-lg shadow-md transition duration-200 text-sm flex items-center justify-center gap-2">
+                                    <i data-lucide="log-in" class="w-4 h-4"></i> Masuk ke Sistem
+                                </button>
+                            </form>
+
+                            <div class="mt-6 pt-4 border-t border-slate-200">
+                                <p class="text-xs text-slate-500 text-center mb-2">Login Cepat (Uji Coba):</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="quickLogin('admin')" class="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-lg font-medium border border-slate-300">
+                                        👑 Role Admin
+                                    </button>
+                                    <button onclick="quickLogin('viewer')" class="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs rounded-lg font-medium border border-slate-300">
+                                        👁️ Role Viewer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 px-6 py-3 text-center border-t border-slate-200">
+                            <p class="text-[11px] text-slate-400">© 2026 Application KAS-ST. Transparan & Akuntabel.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const role = document.getElementById('login-role').value;
+            const email = document.getElementById('login-email').value;
+            
+            state.currentUser = {
+                name: role === 'admin' ? 'Administrator Kas' : 'Pemantau Publik',
+                role: role,
+                email: email
+            };
+            logAudit("Login", `Pengguna ${state.currentUser.name} login sebagai ${role}`);
+            saveState();
+        }
+
+        function quickLogin(role) {
+            state.currentUser = {
+                name: role === 'admin' ? 'Administrator Kas' : 'Auditor Viewer',
+                role: role,
+                email: `${role}@kasst.go.id`
+            };
+            logAudit("Login Cepat", `Pengguna login cepat sebagai ${role}`);
+            saveState();
+        }
+
+        function handleLogout() {
+            logAudit("Logout", `Pengguna ${state.currentUser.name} keluar`);
+            state.currentUser = null;
+            state.activeView = 'dashboard';
+            saveState();
+        }
+
+        // ==========================================
+        // NAVIGATION & SIDEBAR
+        // ==========================================
+        function renderSidebar() {
+            const isAdmin = state.currentUser.role === 'admin';
+
+            const adminMenus = [
+                { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+                { id: 'master-st', label: 'Master Surat Tugas', icon: 'file-text' },
+                { id: 'master-pegawai', label: 'Kelola Pegawai', icon: 'users' },
+                { id: 'penerimaan', label: 'Penerimaan Kas', icon: 'arrow-down-left' },
+                { id: 'pengeluaran', label: 'Pengeluaran Kas', icon: 'arrow-up-right' },
+                { id: 'buku-kas', label: 'Buku Kas', icon: 'book-open' },
+                { id: 'rekonsiliasi', label: 'Rekonsiliasi Kas', icon: 'scale' },
+                { id: 'laporan', label: 'Laporan Keuangan', icon: 'bar-chart-3' },
+                { id: 'pengaturan-tarif', label: 'Pengaturan Tarif ST', icon: 'settings' },
+                { id: 'pengaturan-bri-qris', label: 'Pengaturan BRI & QRIS', icon: 'credit-card' },
+                { id: 'audit-log', label: 'Riwayat Audit Trail', icon: 'history' }
+            ];
+
+            const viewerMenus = [
+                { id: 'dashboard', label: 'Dashboard Pemantauan', icon: 'layout-dashboard' },
+                { id: 'master-st', label: 'Rekap Surat Tugas', icon: 'file-text' },
+                { id: 'buku-kas', label: 'Arus Kas Digital', icon: 'book-open' },
+                { id: 'laporan', label: 'Laporan Publik', icon: 'bar-chart-3' }
+            ];
+
+            const activeMenus = isAdmin ? adminMenus : viewerMenus;
+
+            return `
+                <aside id="app-sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-navy-900 text-slate-300 flex flex-col flex-shrink-0 border-r border-navy-800 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+                    <div class="p-4 border-b border-navy-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-gold-500/20 text-gold-400 rounded-lg">
+                                <i data-lucide="wallet" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-white text-sm tracking-wide">KAS-ST</h2>
+                                <p class="text-[10px] text-slate-400 uppercase">Kas Hasil Surat Tugas</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <nav class="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
+                        ${activeMenus.map(m => {
+                            const isActive = state.activeView === m.id;
+                            return `
+                                <button onclick="switchView('${m.id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${isActive ? 'bg-gold-500 text-slate-950 font-bold shadow' : 'hover:bg-navy-800 hover:text-white text-slate-300'}">
+                                    <i data-lucide="${m.icon}" class="w-4 h-4"></i>
+                                    <span>${m.label}</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </nav>
+
+                    <div class="p-3 border-t border-navy-800">
+                        <div class="p-2.5 bg-navy-800/60 rounded-lg flex items-center justify-between text-xs">
+                            <div class="truncate mr-2">
+                                <p class="font-semibold text-white truncate">${state.currentUser.name}</p>
+                                <p class="text-[10px] text-gold-400 uppercase font-mono">${state.currentUser.role}</p>
+                            </div>
+                            <button onclick="handleLogout()" title="Logout" class="p-1.5 hover:bg-navy-700 text-slate-400 hover:text-white rounded-md transition">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            `;
+        }
+
+        function switchView(viewId) {
+            state.activeView = viewId;
+            // Tutup sidebar otomatis di layar HP setelah berpindah menu
+            if (window.innerWidth < 1024) {
+                const sidebar = document.getElementById('app-sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
+                if (sidebar) sidebar.classList.add('-translate-x-full');
+                if (overlay) overlay.classList.add('hidden');
+            }
+            renderApp();
+        }
+
+        function renderNavbar() {
+            return `
+                <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <button onclick="toggleSidebar()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition focus:outline-none" title="Buka/Tutup Menu">
+                            <i data-lucide="menu" class="w-5 h-5"></i>
+                        </button>
+                        <div>
+                            <h1 class="text-sm md:text-base font-bold text-slate-800 truncate">${getViewTitle(state.activeView)}</h1>
+                            <p class="text-[10px] md:text-[11px] text-slate-500 hidden sm:block">Sistem Pencatatan & Akuntabilitas Kas Surat Tugas</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 text-xs">
+                        <div class="px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200 text-slate-600 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="font-medium text-[11px] sm:text-xs">${state.currentUser.role === 'admin' ? 'Admin' : 'Viewer'}</span>
+                        </div>
+                    </div>
+                </header>
+            `;
+        }
+
+        function getViewTitle(view) {
+            const titles = {
+                'dashboard': 'Dashboard UTAMA Kas Surat Tugas',
+                'master-st': 'Master Data Surat Tugas (ST)',
+                'master-pegawai': 'Kelola Master Data Pegawai / Pelaksana',
+                'penerimaan': 'Pencatatan Penerimaan Kas',
+                'pengeluaran': 'Pencatatan Pengeluaran Kas',
+                'buku-kas': 'Buku Kas & Arus Kas Digital',
+                'rekonsiliasi': 'Rekonsiliasi Kas & Bank',
+                'laporan': 'Laporan Keuangan & Cetak',
+                'pengaturan-tarif': 'Pengaturan Tarif Dasar ST',
+                'pengaturan-bri-qris': 'Pengaturan Metode Pembayaran',
+                'audit-log': 'Riwayat Aktivitas & Audit Trail'
+            };
+            return titles[view] || 'Kas Surat Tugas';
+        }
+
+        // ==========================================
+        // RENDER VIEWS
+        // ==========================================
+        function renderMainView() {
+            switch (state.activeView) {
+                case 'dashboard': return renderDashboardView();
+                case 'master-st': return renderMasterSTView();
+                case 'master-pegawai': return renderMasterPegawaiView();
+                case 'penerimaan': return renderPenerimaanView();
+                case 'pengeluaran': return renderPengeluaranView();
+                case 'buku-kas': return renderBukuKasView();
+                case 'rekonsiliasi': return renderRekonsiliasiView();
+                case 'laporan': return renderLaporanView();
+                case 'pengaturan-tarif': return renderPengaturanTarifView();
+                case 'pengaturan-bri-qris': return renderPengaturanPaymentView();
+                case 'audit-log': return renderAuditLogView();
+                default: return renderDashboardView();
+            }
+        }
+
+        // ------------------------------------------
+        // HELPER LOGIC ST & PENERIMAAN
+        // ------------------------------------------
+        function updateCalculatedTarif() {
+            const jenis = document.getElementById('st-jenis')?.value;
+            const previewEl = document.getElementById('st-alokasi-preview');
+            if (!previewEl) return;
+
+            const nominal = jenis === 'Luar Kota' ? state.settings.tarifLuarKota : state.settings.tarifDalamKota;
+            previewEl.value = formatRupiah(nominal);
+        }
+
+        function handleSaveST(e) {
+            e.preventDefault();
+            const nomor = document.getElementById('st-nomor').value.trim();
+            const pelaksana = document.getElementById('st-pelaksana').value;
+            const tanggal = document.getElementById('st-tanggal').value;
+            const pelaksanaan = document.getElementById('st-pelaksanaan').value;
+            const uraian = document.getElementById('st-uraian').value;
+            const jenis = document.getElementById('st-jenis').value;
+            const metode = document.getElementById('st-metode').value;
+            const ref = document.getElementById('st-ref').value || `REF-${Math.floor(10000 + Math.random() * 90000)}`;
+
+            const tarifNominal = jenis === 'Luar Kota' ? state.settings.tarifLuarKota : state.settings.tarifDalamKota;
+
+            const newST = {
+                id: `ST-2026-${String(state.suratTugas.length + 1).padStart(3, '0')}`,
+                nomor,
+                pelaksana,
+                tanggal,
+                pelaksanaan,
+                uraian,
+                jenis,
+                tarif: tarifNominal,
+                alokasi: tarifNominal,
+                metode,
+                ref,
+                status: "Menunggu Verifikasi Admin",
+                lampiran: null
+            };
+
+            state.suratTugas.unshift(newST);
+
+            // Tambahkan juga transaksi pending di mutasi
+            state.transactions.unshift({
+                id: `TRX-${String(state.transactions.length + 1).padStart(3, '0')}`,
+                tanggal: tanggal,
+                stNomor: nomor,
+                jenis: "Penerimaan",
+                kategori: `Alokasi ST ${jenis}`,
+                uraian: `Pencairan Kas ${nomor} (${pelaksana})`,
+                masuk: tarifNominal,
+                keluar: 0,
+                metode,
+                ref,
+                status: "Menunggu Verifikasi",
+                pencatat: state.currentUser.name,
+                validator: "-"
+            });
+
+            logAudit("Tambah ST", `Mengajukan ST baru ${nomor} pelaksana ${pelaksana}`);
+            closeModal();
+            saveState();
+        }
+
+        function openModalBayarST(stId) {
+            const st = state.suratTugas.find(s => s.id === stId);
+            if (!st) return;
+
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                        <div class="bg-navy-900 px-5 py-4 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-sm">Instruksi Pembayaran Kas ST</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <div class="p-5 space-y-4 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-lg border text-slate-700">
+                                <p><strong>Nomor ST:</strong> ${st.nomor}</p>
+                                <p><strong>Pelaksana:</strong> ${st.pelaksana}</p>
+                                <p><strong>Nominal Kas:</strong> <span class="font-bold text-emerald-600">${formatRupiah(st.alokasi)}</span></p>
+                            </div>
+
+                            ${st.metode === 'BRI' ? `
+                                <div class="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
+                                    <p class="font-bold text-blue-900">Transfer Bank BRI Official:</p>
+                                    <p class="text-slate-600">Bank: <b>${state.settings.briBankName}</b></p>
+                                    <p class="text-slate-600">No. Rekening: <b class="font-mono text-sm text-navy-800">${state.settings.briAccountNumber}</b></p>
+                                    <p class="text-slate-600">Atas Nama: <b>${state.settings.briAccountName}</b></p>
+                                </div>
+                            ` : `
+                                <div class="p-4 bg-amber-50 rounded-lg border border-amber-200 text-center space-y-2">
+                                    <p class="font-bold text-amber-900">Pembayaran via QRIS Official:</p>
+                                    <img src="${state.settings.qrisImageUrl}" alt="QRIS" class="w-36 h-36 mx-auto rounded border shadow-sm">
+                                    <p class="font-medium text-slate-700">${state.settings.qrisMerchant}</p>
+                                </div>
+                            `}
+
+                            <div class="text-[11px] text-slate-500 italic">
+                                *Harap cantumkan Referensi / No. Ref: <b>${st.ref}</b> saat melakukan konfirmasi pembayaran.
+                            </div>
+
+                            <button onclick="closeModal()" class="w-full py-2 bg-navy-800 text-white rounded-lg font-semibold hover:bg-navy-900">Tutup</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function prosesPembayaranST(stId) {
+            const st = state.suratTugas.find(s => s.id === stId);
+            if (!st) return;
+
+            st.status = "Sudah Dibayar";
+            
+            // Verifikasi transaksi terkait
+            const tx = state.transactions.find(t => t.stNomor === st.nomor);
+            if (tx) {
+                tx.status = "Sah";
+                tx.validator = state.currentUser.name;
+            }
+
+            logAudit("Verifikasi Pembayaran ST", `Mengesahkan pembayaran ST ${st.nomor} senilai ${formatRupiah(st.alokasi)}`);
+            saveState();
+        }
+
+        function verifikasiTransaksi(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (!tx) return;
+
+            tx.status = "Sah";
+            tx.validator = state.currentUser.name;
+
+            // Jika transaksi terhubung dengan ST, update status ST juga
+            if (tx.stNomor && tx.stNomor !== '-') {
+                const st = state.suratTugas.find(s => s.nomor === tx.stNomor);
+                if (st) st.status = "Sudah Dibayar";
+            }
+
+            logAudit("Sahkan Transaksi", `Mengesahkan transaksi ${tx.id} nominal ${formatRupiah(tx.masuk || tx.keluar)}`);
+            saveState();
+        }
+
+        // Modal Form Penerimaan Kas
+        function openModalPenerimaan() {
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                        <div class="bg-navy-900 px-5 py-4 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-sm">Catat Penerimaan Kas Baru</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <form onsubmit="handleSavePenerimaan(event)" class="p-5 space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Transaksi</label>
+                                <input type="date" id="in-tanggal" required value="${new Date().toISOString().split('T')[0]}" class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Penerimaan</label>
+                                <input type="text" id="in-kategori" required placeholder="Misal: Non-ST / Penerimaan Lain" class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Uraian / Keterangan</label>
+                                <textarea id="in-uraian" required rows="2" class="w-full px-3 py-2 border rounded-lg text-xs"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal Penerimaan (Rp)</label>
+                                <input type="number" id="in-nominal" required class="w-full px-3 py-2 border rounded-lg text-xs font-bold text-emerald-600">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Metode</label>
+                                    <select id="in-metode" class="w-full px-3 py-2 border rounded-lg text-xs bg-white">
+                                        <option value="BRI">BRI Transfer</option>
+                                        <option value="QRIS">QRIS</option>
+                                        <option value="Cash">Tunai / Cash</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Ref / No Bukti</label>
+                                    <input type="text" id="in-ref" placeholder="No Ref" class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t flex justify-end gap-2">
+                                <button type="button" onclick="closeModal()" class="px-3 py-1.5 border rounded-lg text-xs">Batal</button>
+                                <button type="submit" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Simpan Penerimaan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function handleSavePenerimaan(e) {
+            e.preventDefault();
+            const nominal = parseFloat(document.getElementById('in-nominal').value);
+            const newTx = {
+                id: `TRX-${String(state.transactions.length + 1).padStart(3, '0')}`,
+                tanggal: document.getElementById('in-tanggal').value,
+                stNomor: "-",
+                jenis: "Penerimaan",
+                kategori: document.getElementById('in-kategori').value,
+                uraian: document.getElementById('in-uraian').value,
+                masuk: nominal,
+                keluar: 0,
+                metode: document.getElementById('in-metode').value,
+                ref: document.getElementById('in-ref').value || `REF-${Math.floor(1000 + Math.random() * 9000)}`,
+                status: "Sah",
+                pencatat: state.currentUser.name,
+                validator: state.currentUser.name
+            };
+
+            state.transactions.unshift(newTx);
+            logAudit("Tambah Penerimaan Kas", `Mencatat kas masuk ${formatRupiah(nominal)}`);
+            closeModal();
+            saveState();
+        }
+
+        // Modal Form Pengeluaran Kas
+        function openModalPengeluaran() {
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                        <div class="bg-navy-900 px-5 py-4 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-sm">Catat Pengeluaran Kas Baru</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <form onsubmit="handleSavePengeluaran(event)" class="p-5 space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Transaksi</label>
+                                <input type="date" id="out-tanggal" required value="${new Date().toISOString().split('T')[0]}" class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Pengeluaran</label>
+                                <input type="text" id="out-kategori" required placeholder="Konsumsi, ATK, Operasional, dll." class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Uraian / Keterangan Penggunaan</label>
+                                <textarea id="out-uraian" required rows="2" class="w-full px-3 py-2 border rounded-lg text-xs"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal Pengeluaran (Rp)</label>
+                                <input type="number" id="out-nominal" required class="w-full px-3 py-2 border rounded-lg text-xs font-bold text-rose-600">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Metode</label>
+                                    <select id="out-metode" class="w-full px-3 py-2 border rounded-lg text-xs bg-white">
+                                        <option value="Cash">Tunai / Cash</option>
+                                        <option value="BRI">BRI Transfer</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">No Kuitansi / Ref</label>
+                                    <input type="text" id="out-ref" placeholder="KW-00x" class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t flex justify-end gap-2">
+                                <button type="button" onclick="closeModal()" class="px-3 py-1.5 border rounded-lg text-xs">Batal</button>
+                                <button type="submit" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700">Simpan Pengeluaran</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function handleSavePengeluaran(e) {
+            e.preventDefault();
+            const nominal = parseFloat(document.getElementById('out-nominal').value);
+            const newTx = {
+                id: `TRX-${String(state.transactions.length + 1).padStart(3, '0')}`,
+                tanggal: document.getElementById('out-tanggal').value,
+                stNomor: "-",
+                jenis: "Pengeluaran",
+                kategori: document.getElementById('out-kategori').value,
+                uraian: document.getElementById('out-uraian').value,
+                masuk: 0,
+                keluar: nominal,
+                metode: document.getElementById('out-metode').value,
+                ref: document.getElementById('out-ref').value || `KW-${Math.floor(100 + Math.random() * 900)}`,
+                status: "Sah",
+                pencatat: state.currentUser.name,
+                validator: state.currentUser.name
+            };
+
+            state.transactions.unshift(newTx);
+            logAudit("Tambah Pengeluaran Kas", `Mencatat kas keluar ${formatRupiah(nominal)}`);
+            closeModal();
+            saveState();
+        }
+
+        // ------------------------------------------
+        // 5. BUKU KAS VIEW
+        // ------------------------------------------
+        function renderBukuKasView() {
+            let currentRunningBalance = 0;
+
+            // Hitung running balance secara kronologis
+            const sortedTx = [...state.transactions]
+                .filter(t => t.status === 'Sah')
+                .sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+            const txWithBalance = sortedTx.map(t => {
+                currentRunningBalance += (t.masuk || 0) - (t.keluar || 0);
+                return { ...t, runningSaldo: currentRunningBalance };
+            }).reverse(); // Tampilkan yang terbaru di atas
+
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Buku Kas & Arus Kas Digital</h3>
+                        <p class="text-xs text-slate-500">Mutasi kas lengkap dengan pencatatan saldo bergerak</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">ID TRX</th>
+                                        <th class="p-3">No. ST / Ref</th>
+                                        <th class="p-3">Uraian Transaksi</th>
+                                        <th class="p-3 text-right">Debit / Masuk</th>
+                                        <th class="p-3 text-right">Kredit / Keluar</th>
+                                        <th class="p-3 text-right font-bold">Saldo Kas</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    ${txWithBalance.length > 0 ? txWithBalance.map(t => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3">${t.tanggal}</td>
+                                            <td class="p-3 font-mono font-bold text-slate-700">${t.id}</td>
+                                            <td class="p-3 font-mono text-navy-800">${t.stNomor !== '-' ? t.stNomor : t.ref}</td>
+                                            <td class="p-3">
+                                                <p class="font-bold text-slate-800">${t.kategori}</p>
+                                                <p class="text-[11px] text-slate-500">${t.uraian}</p>
+                                            </td>
+                                            <td class="p-3 text-right font-bold text-emerald-600">${t.masuk > 0 ? formatRupiah(t.masuk) : '-'}</td>
+                                            <td class="p-3 text-right font-bold text-rose-600">${t.keluar > 0 ? formatRupiah(t.keluar) : '-'}</td>
+                                            <td class="p-3 text-right font-bold text-navy-900 bg-slate-50">${formatRupiah(t.runningSaldo)}</td>
+                                        </tr>
+                                    `).join('') : `
+                                        <tr>
+                                            <td colspan="7" class="p-6 text-center text-slate-400 italic">Belum ada mutasi kas tervalidasi.</td>
+                                        </tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ------------------------------------------
+        // DASHBOARD & LAIN-LAIN
+        // ------------------------------------------
+        // 1. DASHBOARD VIEW
+        // ------------------------------------------
+        function renderDashboardView() {
+            const fin = calculateFinancials();
+            return `
+                <div class="space-y-6">
+                    <!-- SUMMARY CARDS -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div class="p-3 bg-emerald-100 text-emerald-600 rounded-lg">
+                                <i data-lucide="wallet" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Saldo Kas Saat Ini</p>
+                                <p class="text-lg font-bold text-slate-900">${formatRupiah(fin.saldoKas)}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div class="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                                <i data-lucide="arrow-down-left" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Penerimaan</p>
+                                <p class="text-lg font-bold text-emerald-600">${formatRupiah(fin.totalPenerimaan)}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div class="p-3 bg-rose-100 text-rose-600 rounded-lg">
+                                <i data-lucide="arrow-up-right" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Pengeluaran</p>
+                                <p class="text-lg font-bold text-rose-600">${formatRupiah(fin.totalPengeluaran)}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div class="p-3 bg-amber-100 text-amber-600 rounded-lg">
+                                <i data-lucide="file-check" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Jumlah Surat Tugas</p>
+                                <p class="text-lg font-bold text-slate-900">${state.suratTugas.length} ST</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHARTS SECTION -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-800 mb-4">Grafik Arus Kas (Penerimaan vs Pengeluaran)</h3>
+                            <div class="h-64 relative">
+                                <canvas id="chart-cashflow"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-800 mb-4">Proporsi Alokasi ST</h3>
+                            <div class="h-64 relative">
+                                <canvas id="chart-st-allocation"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initChartsIfNeeded() {
+            if (state.activeView !== 'dashboard') return;
+
+            // Cashflow Chart
+            const ctx1 = document.getElementById('chart-cashflow');
+            if (ctx1) {
+                new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                        datasets: [
+                            { label: 'Penerimaan', data: [50000, 0, 0, 0, 0, 0], backgroundColor: '#102a43' },
+                            { label: 'Pengeluaran', data: [12000, 0, 0, 0, 0, 0], backgroundColor: '#e11d48' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Allocation Doughnut Chart
+            const ctx2 = document.getElementById('chart-st-allocation');
+            if (ctx2) {
+                const fin = calculateFinancials();
+                new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['ST Dalam Kota', 'ST Luar Kota'],
+                        datasets: [{
+                            data: [fin.stDalamKotaCount * state.settings.tarifDalamKota, fin.stLuarKotaCount * state.settings.tarifLuarKota],
+                            backgroundColor: ['#f59e0b', '#334e68']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        // ------------------------------------------
+        // 2. MASTER SURAT TUGAS VIEW
+        // ------------------------------------------
+        function renderMasterSTView() {
+            const isAdmin = state.currentUser.role === 'admin';
+            const searchVal = (document.getElementById('filter-st-search')?.value || '').toLowerCase();
+            const jenisVal = document.getElementById('filter-st-jenis')?.value || '';
+
+            const filteredST = state.suratTugas.filter(s => {
+                const matchSearch = s.nomor.toLowerCase().includes(searchVal) ||
+                                    (s.pelaksana && s.pelaksana.toLowerCase().includes(searchVal)) ||
+                                    s.uraian.toLowerCase().includes(searchVal);
+                const matchJenis = jenisVal === '' || s.jenis === jenisVal;
+                return matchSearch && matchJenis;
+            });
+
+            return `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Daftar Surat Tugas (ST)</h3>
+                            <p class="text-xs text-slate-500">Perhitungan otomatis kas sesuai jenis penugasan</p>
+                        </div>
+                        <button onclick="openModalTambahST()" class="px-4 py-2 bg-navy-800 hover:bg-navy-900 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Catat Surat Tugas Baru
+                        </button>
+                    </div>
+
+                    <!-- SEARCH & FILTER -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="filter-st-search" value="${searchVal}" oninput="renderApp()" placeholder="Cari nomor ST, nama pelaksana, atau uraian..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-navy-500 focus:outline-none">
+                        <select id="filter-st-jenis" onchange="renderApp()" class="px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white">
+                            <option value="" ${jenisVal === '' ? 'selected' : ''}>Semua Jenis ST</option>
+                            <option value="Dalam Kota" ${jenisVal === 'Dalam Kota' ? 'selected' : ''}>Dalam Kota</option>
+                            <option value="Luar Kota" ${jenisVal === 'Luar Kota' ? 'selected' : ''}>Luar Kota</option>
+                        </select>
+                    </div>
+
+                    <!-- TABLE DATA -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                                        <th class="p-3">Nomor ST</th>
+                                        <th class="p-3">Nama Pelaksana</th>
+                                        <th class="p-3">Tgl ST & Pelaksanaan</th>
+                                        <th class="p-3">Uraian Kegiatan</th>
+                                        <th class="p-3">Jenis ST</th>
+                                        <th class="p-3 text-right">Alokasi Kas</th>
+                                        <th class="p-3">Metode Bayar</th>
+                                        <th class="p-3 text-center">Status ST</th>
+                                        <th class="p-3 text-center">Aksi / Verifikasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    ${filteredST.length > 0 ? filteredST.map(s => `
+                                        <tr class="hover:bg-slate-50 transition">
+                                            <td class="p-3 font-mono font-bold text-navy-800">${s.nomor}</td>
+                                            <td class="p-3 font-semibold text-slate-800">${s.pelaksana || '-'}</td>
+                                            <td class="p-3">
+                                                <p class="text-slate-800">${s.tanggal}</p>
+                                                <p class="text-[10px] text-slate-400">Pelaksanaan: ${s.pelaksanaan}</p>
+                                            </td>
+                                            <td class="p-3 font-medium text-slate-700">${s.uraian}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.jenis === 'Luar Kota' ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}">
+                                                    ${s.jenis}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-right font-bold text-emerald-600">${formatRupiah(s.alokasi)}</td>
+                                            <td class="p-3">
+                                                <p class="font-semibold text-slate-800">${s.metode}</p>
+                                                <p class="text-[10px] font-mono text-slate-400">${s.ref || '-'}</p>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'Sudah Dibayar' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                                    ${s.status}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    ${s.status !== 'Sudah Dibayar' ? `
+                                                        <button onclick="openModalBayarST('${s.id}')" class="px-2 py-1 bg-gold-500 hover:bg-gold-600 text-slate-950 font-bold rounded text-[10px] shadow-sm flex items-center gap-1">
+                                                            <i data-lucide="qr-code" class="w-3 h-3"></i> Info Bayar
+                                                        </button>
+                                                        ${isAdmin ? `
+                                                            <button onclick="prosesPembayaranST('${s.id}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] hover:bg-emerald-700 font-bold flex items-center gap-1 shadow-sm">
+                                                                <i data-lucide="check-circle" class="w-3 h-3"></i> Verifikasi Uang Masuk
+                                                            </button>
+                                                        ` : `
+                                                            <span class="text-amber-600 text-[10px] font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                                                Tunggu Verifikasi
+                                                            </span>
+                                                        `}
+                                                    ` : '<span class="text-emerald-600 text-[10px] font-bold flex items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i> Lunas</span>'}
+
+                                                    <!-- DELETE BUTTON FOR ADMIN OR UNVERIFIED ITEM -->
+                                                    ${(isAdmin || s.status !== 'Sudah Dibayar') ? `
+                                                        <button onclick="hapusSuratTugas('${s.id}')" title="Hapus ST" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-[10px] font-bold flex items-center gap-0.5 transition">
+                                                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                        </button>
+                                                    ` : ''}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('') : `
+                                        <tr>
+                                            <td colspan="9" class="p-6 text-center text-slate-400 italic">Data Surat Tugas tidak ditemukan.</td>
+                                        </tr>
+                                    `}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openModalTambahST() {
+            const modal = document.getElementById('modal-container');
+            const pegawaiOptions = state.pegawaiList.map(p => `<option value="${p}">${p}</option>`).join('');
+
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                        <div class="bg-navy-900 px-5 py-4 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-sm">Tambah Surat Tugas Baru</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <form onsubmit="handleSaveST(event)" class="p-5 space-y-4">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Surat Tugas</label>
+                                    <input type="text" id="st-nomor" required placeholder="Contoh: ST/201/I/2026" class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-navy-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pegawai / Pelaksana</label>
+                                    <select id="st-pelaksana" required class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-navy-500">
+                                        <option value="">-- Pilih Pegawai --</option>
+                                        ${pegawaiOptions}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal ST</label>
+                                    <input type="date" id="st-tanggal" required class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Pelaksanaan</label>
+                                    <input type="date" id="st-pelaksanaan" required class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Uraian / Kegiatan Penugasan</label>
+                                <textarea id="st-uraian" required rows="2" placeholder="Uraian penugasan..." class="w-full px-3 py-2 border rounded-lg text-xs"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Penugasan</label>
+                                    <select id="st-jenis" onchange="updateCalculatedTarif()" class="w-full px-3 py-2 border rounded-lg text-xs bg-white">
+                                        <option value="Luar Kota">ST Luar Kota</option>
+                                        <option value="Dalam Kota">ST Dalam Kota</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Alokasi Kas (Otomatis)</label>
+                                    <input type="text" id="st-alokasi-preview" readonly class="w-full px-3 py-2 border rounded-lg text-xs bg-slate-100 font-bold text-emerald-600">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Metode Pembayaran Kas</label>
+                                    <select id="st-metode" class="w-full px-3 py-2 border rounded-lg text-xs bg-white">
+                                        <option value="BRI">Transfer BRI</option>
+                                        <option value="QRIS">QRIS Official</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Referensi Transaksi</label>
+                                    <input type="text" id="st-ref" placeholder="No TRX / Ref Transfer" class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
+                                <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0"></i>
+                                <span>Surat Tugas yang diajukan akan berstatus <b>Menunggu Verifikasi Admin</b> sebelum uang masuk tercatat resmi di Kas.</span>
+                            </div>
+
+                            <div class="pt-3 border-t flex justify-end gap-2">
+                                <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded-lg text-xs text-slate-600 hover:bg-slate-50">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-navy-800 text-white rounded-lg text-xs font-semibold hover:bg-navy-900">Simpan & Ajukan Surat Tugas</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            updateCalculatedTarif();
+        }
+
+        function hapusSuratTugas(stId) {
+            const st = state.suratTugas.find(s => s.id === stId);
+            if (!st) return;
+
+            if (confirm(`HAPUS DATA: Apakah Anda yakin ingin menghapus Surat Tugas ${st.nomor} (a.n ${st.pelaksana})?`)) {
+                // If ST was already paid, remove associated valid transaction
+                if (st.status === 'Sudah Dibayar') {
+                    state.transactions = state.transactions.filter(t => t.stNomor !== st.nomor);
+                }
+
+                state.suratTugas = state.suratTugas.filter(s => s.id !== stId);
+                logAudit("Hapus ST", `Menghapus Surat Tugas ${st.nomor} (${st.pelaksana})`);
+                saveState();
+            }
+        }
+
+        function hapusTransaksi(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (!tx) return;
+
+            if (confirm(`HAPUS TRANSAKSI: Apakah Anda yakin ingin menghapus transaksi ${tx.id} - ${tx.uraian}?`)) {
+                state.transactions = state.transactions.filter(t => t.id !== txId);
+                logAudit("Hapus Transaksi", `Menghapus transaksi ${tx.id} (${tx.kategori}) nominal Rp${tx.masuk || tx.keluar}`);
+                saveState();
+            }
+        }
+
+        // ------------------------------------------
+        // MASTER PEGAWAI VIEW (ADMIN ONLY)
+        // ------------------------------------------
+        function renderMasterPegawaiView() {
+            return `
+                <div class="space-y-6 max-w-3xl">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Master Data Pegawai / Pelaksana ST</h3>
+                            <p class="text-xs text-slate-500">Nama pegawai akan muncul otomatis sebagai pilihan saat menambah ST Baru</p>
+                        </div>
+                        <button onclick="openModalTambahPegawai()" class="px-4 py-2 bg-navy-800 hover:bg-navy-900 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Pegawai Baru
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b">
+                                    <th class="p-3 w-12 text-center">#</th>
+                                    <th class="p-3">Nama Lengkap Pegawai</th>
+                                    <th class="p-3 text-center">Total ST Terlibat</th>
+                                    <th class="p-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                ${state.pegawaiList.map((p, idx) => {
+                                    const stCount = state.suratTugas.filter(s => s.pelaksana === p).length;
+                                    return `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3 text-center text-slate-400 font-bold">${idx + 1}</td>
+                                            <td class="p-3 font-bold text-slate-800">${p}</td>
+                                            <td class="p-3 text-center font-semibold text-navy-800">${stCount} ST</td>
+                                            <td class="p-3 text-center">
+                                                <button onclick="hapusPegawai('${p}')" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold text-[10px] rounded flex items-center gap-1 mx-auto">
+                                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openModalTambahPegawai() {
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+                        <div class="bg-navy-900 px-5 py-4 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-sm">Tambah Pegawai Baru</h3>
+                            <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <form onsubmit="handleSavePegawai(event)" class="p-5 space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap & Gelar</label>
+                                <input type="text" id="pegawai-nama" required placeholder="Contoh: Dr. Ir. Budi Santoso" class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-navy-500">
+                            </div>
+                            <div class="pt-2 border-t flex justify-end gap-2">
+                                <button type="button" onclick="closeModal()" class="px-3 py-1.5 border rounded-lg text-xs">Batal</button>
+                                <button type="submit" class="px-3 py-1.5 bg-navy-800 text-white rounded-lg text-xs font-semibold hover:bg-navy-900">Simpan Pegawai</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function handleSavePegawai(e) {
+            e.preventDefault();
+            const nama = document.getElementById('pegawai-nama').value.trim();
+            if (state.pegawaiList.includes(nama)) {
+                alert("Pegawai dengan nama ini sudah terdaftar!");
+                return;
+            }
+            state.pegawaiList.push(nama);
+            logAudit("Tambah Pegawai", `Menambahkan pegawai baru: ${nama}`);
+            closeModal();
+            saveState();
+        }
+
+        function hapusPegawai(nama) {
+            if (confirm(`Hapus pegawai "${nama}" dari master data?`)) {
+                state.pegawaiList = state.pegawaiList.filter(p => p !== nama);
+                logAudit("Hapus Pegawai", `Menghapus pegawai: ${nama}`);
+                saveState();
+            }
+        }
+
+        // ------------------------------------------
+        // 3. PENERIMAAN KAS VIEW
+        // ------------------------------------------
+        function renderPenerimaanView() {
+            const isAdmin = state.currentUser.role === 'admin';
+
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Pencatatan Penerimaan Kas</h3>
+                            <p class="text-xs text-slate-500">Kelola penerimaan kas masuk dari ST & sumber lain</p>
+                        </div>
+                        ${isAdmin ? `
+                            <button onclick="openModalPenerimaan()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Catat Penerimaan Kas
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                                        <th class="p-3">ID TRX</th>
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">Referensi ST</th>
+                                        <th class="p-3">Kategori & Uraian</th>
+                                        <th class="p-3 text-right">Nominal Masuk</th>
+                                        <th class="p-3">Metode</th>
+                                        <th class="p-3 text-center">Status</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    ${state.transactions.filter(t => t.jenis === 'Penerimaan').map(t => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3 font-mono font-bold text-slate-700">${t.id}</td>
+                                            <td class="p-3">${t.tanggal}</td>
+                                            <td class="p-3 font-mono text-navy-800">${t.stNomor}</td>
+                                            <td class="p-3">
+                                                <p class="font-bold text-slate-800">${t.kategori}</p>
+                                                <p class="text-[11px] text-slate-500">${t.uraian}</p>
+                                            </td>
+                                            <td class="p-3 text-right font-bold text-emerald-600">${formatRupiah(t.masuk)}</td>
+                                            <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded font-mono">${t.metode}</span></td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'Sah' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                                    ${t.status}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    ${isAdmin && t.status === 'Menunggu Verifikasi' ? `
+                                                        <button onclick="verifikasiTransaksi('${t.id}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-semibold hover:bg-emerald-700">
+                                                            Sahkan
+                                                        </button>
+                                                    ` : ''}
+                                                    ${(isAdmin || t.status === 'Menunggu Verifikasi') ? `
+                                                        <button onclick="hapusTransaksi('${t.id}')" title="Hapus Transaksi" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-[10px] font-bold">
+                                                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                        </button>
+                                                    ` : '<span class="text-slate-400 text-[10px]">Tervalidasi</span>'}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ------------------------------------------
+        // 4. PENGELUARAN KAS VIEW
+        // ------------------------------------------
+        function renderPengeluaranView() {
+            const isAdmin = state.currentUser.role === 'admin';
+
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Pencatatan Pengeluaran Kas</h3>
+                            <p class="text-xs text-slate-500">Kelola penggunaan dana kas resmi</p>
+                        </div>
+                        ${isAdmin ? `
+                            <button onclick="openModalPengeluaran()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2">
+                                <i data-lucide="minus-circle" class="w-4 h-4"></i> Catat Pengeluaran Kas
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                                        <th class="p-3">ID TRX</th>
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">Kategori & Purpose</th>
+                                        <th class="p-3 text-right">Nominal Keluar</th>
+                                        <th class="p-3">Metode</th>
+                                        <th class="p-3 text-center">Status</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200">
+                                    ${state.transactions.filter(t => t.jenis === 'Pengeluaran').map(t => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3 font-mono font-bold text-slate-700">${t.id}</td>
+                                            <td class="p-3">${t.tanggal}</td>
+                                            <td class="p-3">
+                                                <p class="font-bold text-slate-800">${t.kategori}</p>
+                                                <p class="text-[11px] text-slate-500">${t.uraian}</p>
+                                            </td>
+                                            <td class="p-3 text-right font-bold text-rose-600">${formatRupiah(t.keluar)}</td>
+                                            <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded font-mono">${t.metode}</span></td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'Sah' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                                    ${t.status}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <div class="flex items-center justify-center gap-1">
+                                                    ${isAdmin && t.status === 'Menunggu Verifikasi' ? `
+                                                        <button onclick="verifikasiTransaksi('${t.id}')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-semibold">
+                                                            Sahkan
+                                                        </button>
+                                                    ` : ''}
+                                                    ${(isAdmin || t.status === 'Menunggu Verifikasi') ? `
+                                                        <button onclick="hapusTransaksi('${t.id}')" title="Hapus Pengeluaran" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-[10px] font-bold">
+                                                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                        </button>
+                                                    ` : '<span class="text-slate-400 text-[10px]">Tervalidasi</span>'}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ------------------------------------------
+        // 6. REKONSILIASI KAS VIEW
+        // ------------------------------------------
+        function renderRekonsiliasiView() {
+            const fin = calculateFinancials();
+
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Rekonsiliasi Kas & Mutasi Bank</h3>
+                        <p class="text-xs text-slate-500">Pemeriksaan kesesuaian saldo sistem vs saldo aktual fisik/bank</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                            <h4 class="text-sm font-bold text-slate-800 border-b pb-2">Form Rekonsiliasi Kas</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Saldo Menurut Aplikasi</label>
+                                <input type="text" readonly value="${formatRupiah(fin.saldoKas)}" class="w-full px-3 py-2 bg-slate-100 border rounded-lg text-xs font-bold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Saldo Aktual Bank BRI / QRIS (Rp)</label>
+                                <input type="number" id="rec-aktual" oninput="calculateDifference(${fin.saldoKas})" placeholder="Masukkan saldo fisik/bank..." class="w-full px-3 py-2 border rounded-lg text-xs font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Selisih Saldo</label>
+                                <input type="text" id="rec-selisih" readonly value="Rp0" class="w-full px-3 py-2 bg-slate-100 border rounded-lg text-xs font-bold text-slate-700">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan Hasil Pemeriksaan</label>
+                                <textarea id="rec-catatan" rows="3" placeholder="Uraian penjelasan jika terdapat selisih..." class="w-full px-3 py-2 border rounded-lg text-xs"></textarea>
+                            </div>
+                            <button onclick="handleSaveRekonsiliasi(${fin.saldoKas})" class="w-full py-2.5 bg-navy-800 text-white font-semibold rounded-lg text-xs hover:bg-navy-900">
+                                Simpan Berita Acara Rekonsiliasi
+                            </button>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="text-sm font-bold text-slate-800 mb-3">Riwayat Rekonsiliasi</h4>
+                            <div class="space-y-3">
+                                ${state.reconciliations.map(r => `
+                                    <div class="p-3 border rounded-lg bg-slate-50 text-xs space-y-1">
+                                        <div class="flex justify-between items-center font-bold">
+                                            <span>${r.tanggal}</span>
+                                            <span class="px-2 py-0.5 rounded text-[10px] ${r.selisih === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${r.status}</span>
+                                        </div>
+                                        <p class="text-slate-600">Saldo App: ${formatRupiah(r.saldoAplikasi)} | Saldo Aktual: ${formatRupiah(r.saldoAktual)}</p>
+                                        <p class="text-slate-500 italic">"${r.catatan}"</p>
+                                        <p class="text-[10px] text-slate-400">Pemeriksa: ${r.petugas}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateDifference(saldoApp) {
+            const val = parseFloat(document.getElementById('rec-aktual').value) || 0;
+            const selisih = val - saldoApp;
+            document.getElementById('rec-selisih').value = formatRupiah(selisih);
+        }
+
+        function handleSaveRekonsiliasi(saldoApp) {
+            const aktual = parseFloat(document.getElementById('rec-aktual').value);
+            if (isNaN(aktual)) {
+                alert("Masukkan nominal saldo aktual!");
+                return;
+            }
+            const selisih = aktual - saldoApp;
+            const newRec = {
+                id: `REC-${Date.now()}`,
+                tanggal: new Date().toISOString().split('T')[0],
+                saldoAplikasi: saldoApp,
+                saldoAktual: aktual,
+                selisih: selisih,
+                petugas: state.currentUser.name,
+                catatan: document.getElementById('rec-catatan').value || "Rekonsiliasi Rutin",
+                status: selisih === 0 ? "Match" : "Selisih"
+            };
+
+            state.reconciliations.unshift(newRec);
+            logAudit("Rekonsiliasi Kas", `Melakukan rekonsiliasi kas: Saldo App ${saldoApp}, Saldo Aktual ${aktual}`);
+            saveState();
+        }
+
+        // ------------------------------------------
+        // 7. LAPORAN VIEW
+        // ------------------------------------------
+        function renderLaporanView() {
+            const fin = calculateFinancials();
+
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">Laporan Keuangan Kas Surat Tugas</h3>
+                                <p class="text-xs text-slate-500">Periode Berjalan: Tahun 2026</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="exportCSV()" class="px-3 py-2 bg-emerald-600 text-white rounded text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1.5">
+                                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Ekspor CSV / Excel
+                                </button>
+                                <button onclick="window.print()" class="px-3 py-2 bg-navy-800 text-white rounded text-xs font-semibold hover:bg-navy-900 flex items-center gap-1.5">
+                                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak Laporan PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- REPORT SUMMARY BOXES -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                            <div>
+                                <span class="text-slate-500">Total ST Dalam Kota:</span>
+                                <p class="font-bold text-slate-800 text-sm">${fin.stDalamKotaCount} ST</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Total ST Luar Kota:</span>
+                                <p class="font-bold text-slate-800 text-sm">${fin.stLuarKotaCount} ST</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Total Penerimaan:</span>
+                                <p class="font-bold text-emerald-600 text-sm">${formatRupiah(fin.totalPenerimaan)}</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Total Pengeluaran:</span>
+                                <p class="font-bold text-rose-600 text-sm">${formatRupiah(fin.totalPengeluaran)}</p>
+                            </div>
+                        </div>
+
+                        <!-- DETAILED REPORT TABLE -->
+                        <div class="overflow-x-auto pt-2">
+                            <h4 class="text-xs font-bold uppercase text-slate-500 mb-2">Rincian Laporan Arus Kas</h4>
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-200 text-slate-700 uppercase font-bold">
+                                        <th class="p-2 border">No</th>
+                                        <th class="p-2 border">Tanggal</th>
+                                        <th class="p-2 border">Kategori</th>
+                                        <th class="p-2 border">Uraian Transaksi</th>
+                                        <th class="p-2 border text-right">Debit (Rp)</th>
+                                        <th class="p-2 border text-right">Kredit (Rp)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.transactions.filter(t => t.status === 'Sah').map((t, idx) => `
+                                        <tr>
+                                            <td class="p-2 border">${idx + 1}</td>
+                                            <td class="p-2 border">${t.tanggal}</td>
+                                            <td class="p-2 border font-semibold">${t.kategori}</td>
+                                            <td class="p-2 border">${t.uraian}</td>
+                                            <td class="p-2 border text-right">${t.masuk > 0 ? formatRupiah(t.masuk) : '-'}</td>
+                                            <td class="p-2 border text-right">${t.keluar > 0 ? formatRupiah(t.keluar) : '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr class="bg-slate-100 font-bold">
+                                        <td colspan="4" class="p-2 border text-right uppercase">Total & Saldo Akhir Kas:</td>
+                                        <td class="p-2 border text-right text-emerald-600">${formatRupiah(fin.totalPenerimaan)}</td>
+                                        <td class="p-2 border text-right text-rose-600">${formatRupiah(fin.totalPengeluaran)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function exportCSV() {
+            let csv = "ID,Tanggal,Nomor ST,Kategori,Uraian,Masuk,Keluar,Metode,Status\n";
+            state.transactions.forEach(t => {
+                csv += `"${t.id}","${t.tanggal}","${t.stNomor}","${t.kategori}","${t.uraian}",${t.masuk},${t.keluar},"${t.metode}","${t.status}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Laporan_Kas_ST_${new Date().toISOString().split('T')[0]}.csv`);
+            a.click();
+        }
+
+        // ------------------------------------------
+        // 8. PENGATURAN TARIF VIEW (ADMIN)
+        // ------------------------------------------
+        function renderPengaturanTarifView() {
+            return `
+                <div class="space-y-6 max-w-2xl">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="text-base font-bold text-slate-800 border-b pb-2">Pengaturan Tarif Kas Surat Tugas</h3>
+                        <p class="text-xs text-slate-500">Perubahan tarif hanya berlaku sesuai tanggal efektif dan tidak mengubah data historis.</p>
+
+                        <form onsubmit="handleSaveTarif(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Tarif ST Luar Kota (Rp)</label>
+                                <input type="number" id="cfg-luar" value="${state.settings.tarifLuarKota}" required class="w-full px-3 py-2 border rounded-lg text-xs font-bold text-navy-800">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Tarif ST Dalam Kota (Rp)</label>
+                                <input type="number" id="cfg-dalam" value="${state.settings.tarifDalamKota}" required class="w-full px-3 py-2 border rounded-lg text-xs font-bold text-navy-800">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Efektif Berlaku</label>
+                                <input type="date" id="cfg-date" value="${state.settings.effectiveDate}" required class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+
+                            <button type="submit" class="px-4 py-2.5 bg-navy-800 text-white rounded-lg text-xs font-semibold hover:bg-navy-900 shadow">
+                                Simpan Kebijakan Tarif Baru
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleSaveTarif(e) {
+            e.preventDefault();
+            state.settings.tarifLuarKota = parseFloat(document.getElementById('cfg-luar').value);
+            state.settings.tarifDalamKota = parseFloat(document.getElementById('cfg-dalam').value);
+            state.settings.effectiveDate = document.getElementById('cfg-date').value;
+
+            logAudit("Ubah Tarif ST", `Mengubah tarif dasar: Luar Kota=${state.settings.tarifLuarKota}, Dalam Kota=${state.settings.tarifDalamKota}`);
+            alert("Pengaturan tarif dasar berhasil diperbarui!");
+            saveState();
+        }
+
+        // ------------------------------------------
+        // 9. PENGATURAN BRI & QRIS VIEW (ADMIN)
+        // ------------------------------------------
+        function renderPengaturanPaymentView() {
+            return `
+                <div class="space-y-6 max-w-2xl">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="text-base font-bold text-slate-800 border-b pb-2">Konfigurasi Rekening BRI & QRIS</h3>
+
+                        <form onsubmit="handleSavePayment(event)" class="space-y-4">
+                            <h4 class="text-xs font-bold uppercase text-navy-800">1. Rekening BRI Official</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pemilik Rekening</label>
+                                    <input type="text" id="cfg-bri-name" value="${state.settings.briAccountName}" class="w-full px-3 py-2 border rounded-lg text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Rekening BRI</label>
+                                    <input type="text" id="cfg-bri-num" value="${state.settings.briAccountNumber}" class="w-full px-3 py-2 border rounded-lg text-xs font-mono">
+                                </div>
+                            </div>
+
+                            <h4 class="text-xs font-bold uppercase text-navy-800 pt-3 border-t">2. QRIS Official</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Merchant QRIS</label>
+                                <input type="text" id="cfg-qris-merchant" value="${state.settings.qrisMerchant}" class="w-full px-3 py-2 border rounded-lg text-xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Gambar QRIS Code (PNG/JPG)</label>
+                                <input type="file" id="cfg-qris-file" accept="image/*" onchange="previewQRISUpload(event)" class="w-full text-xs text-slate-500 border rounded-lg p-2 bg-slate-50">
+                            </div>
+
+                            <!-- PREVIEW AREA -->
+                            <div class="p-3 border rounded-lg bg-slate-50 text-center">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block mb-2">Gambar QRIS Aktif</span>
+                                <img id="qris-preview-img" src="${state.settings.qrisImageUrl}" alt="QRIS Preview" class="w-40 h-40 mx-auto rounded-lg border object-cover shadow-sm">
+                            </div>
+
+                            <button type="submit" class="px-4 py-2.5 bg-navy-800 text-white rounded-lg text-xs font-semibold hover:bg-navy-900 shadow">
+                                Simpan Informasi Pembayaran
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        let uploadedQrisDataUrl = null;
+
+        function previewQRISUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedQrisDataUrl = event.target.result;
+                    document.getElementById('qris-preview-img').src = uploadedQrisDataUrl;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleSavePayment(e) {
+            e.preventDefault();
+            state.settings.briAccountName = document.getElementById('cfg-bri-name').value;
+            state.settings.briAccountNumber = document.getElementById('cfg-bri-num').value;
+            state.settings.qrisMerchant = document.getElementById('cfg-qris-merchant').value;
+
+            if (uploadedQrisDataUrl) {
+                state.settings.qrisImageUrl = uploadedQrisDataUrl;
+            }
+
+            logAudit("Ubah Payment Config", "Memperbarui info rekening BRI dan mengunggah gambar QRIS baru.");
+            alert("Konfigurasi pembayaran dan gambar QRIS berhasil diperbarui!");
+            saveState();
+        }
+
+        // ------------------------------------------
+        // 10. AUDIT LOG VIEW (ADMIN)
+        // ------------------------------------------
+        function renderAuditLogView() {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="text-base font-bold text-slate-800">Riwayat Audit Trail & Jejak Aktivitas</h3>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 uppercase font-semibold border-b">
+                                        <th class="p-3">Waktu Log</th>
+                                        <th class="p-3">Pengguna</th>
+                                        <th class="p-3">Aksi</th>
+                                        <th class="p-3">Detail Perubahan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y">
+                                    ${state.auditLogs.map(l => `
+                                        <tr>
+                                            <td class="p-3 font-mono text-slate-500">${l.timestamp}</td>
+                                            <td class="p-3 font-bold text-slate-800">${l.user}</td>
+                                            <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-semibold">${l.action}</span></td>
+                                            <td class="p-3 text-slate-600">${l.detail}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // MODAL CLOSE HELPER
+        function closeModal() {
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                modalContainer.innerHTML = '';
+            }
+        }
+
+        // INITIAL APP LAUNCH
+        window.onload = function() {
+            renderApp();
+        };
+    </script>
+</body>
+</html>
