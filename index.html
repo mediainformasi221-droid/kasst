@@ -1,258 +1,926 @@
-<!-- SIDEBAR NAV -->
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <i class="fa-solid fa-wallet"></i> KAS-<span>ST</span>
-  </div>
-  <ul class="sidebar-menu">
-    <li class="active" onclick="switchTab('dashboard')"><a href="#"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
-    <li onclick="switchTab('surat-tugas')"><a href="#"><i class="fa-solid fa-file-invoice"></i> Surat Tugas</a></li>
-    <li onclick="switchTab('penerimaan')"><a href="#"><i class="fa-solid fa-arrow-down-left"></i> Penerimaan Kas</a></li>
-    <li onclick="switchTab('pengeluaran')"><a href="#"><i class="fa-solid fa-arrow-up-right"></i> Pengeluaran Kas</a></li>
-    <li onclick="switchTab('buku-kas')"><a href="#"><i class="fa-solid fa-book"></i> Buku Kas</a></li>
-    <li onclick="switchTab('rekonsiliasi')"><a href="#"><i class="fa-solid fa-scale-balanced"></i> Rekonsiliasi</a></li>
-    <li class="admin-only" onclick="switchTab('pengaturan')"><a href="#"><i class="fa-solid fa-gears"></i> Pengaturan</a></li>
-    <li class="admin-only" onclick="switchTab('users')"><a href="#"><i class="fa-solid fa-users"></i> Pengguna</a></li>
-    <li class="admin-only" onclick="switchTab('audit-log')"><a href="#"><i class="fa-solid fa-shield-halved"></i> Audit Log</a></li>
-  </ul>
-  <div class="sidebar-footer">
-    System Versi 1.0.0 (GAS Engine)
-  </div>
-</aside>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAS-ST - Sistem Informasi Kas Surat Tugas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef6ff',
+              100: '#e0edff',
+              500: '#0052cc',
+              600: '#003e99',
+              800: '#002855',
+              900: '#001938',
+            },
+            gold: {
+              400: '#E5C05B',
+              500: '#C8A64B',
+              600: '#B08F39',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen overflow-hidden flex flex-col md:flex-row">
 
-<!-- MAIN WRAPPER -->
-<div class="main-wrapper">
-  <header class="topbar">
-    <div style="font-weight: 600; color: var(--primary);" id="topbar-title">Dashboard</div>
-    <div class="user-profile">
-      <span class="user-badge" id="user-role-badge">ADMIN</span>
-      <span id="user-name-display" style="font-weight: 500; font-size: 0.9rem;">User</span>
-      <button onclick="handleLogout()" class="btn btn-sm btn-danger"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+  <!-- VIEW LOGIN -->
+  <div id="login-view" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 p-4">
+    <div class="w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 p-8 transform transition-all">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-50 text-brand-500 mb-4 shadow-inner">
+          <i class="fa-solid fa-wallet text-3xl text-gold-500"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-brand-900">KAS-<span class="text-gold-500">ST</span></h1>
+        <p class="text-sm text-slate-500 mt-1">Sistem Informasi Pengelolaan Kas Surat Tugas</p>
+      </div>
+
+      <form id="form-login" onsubmit="handleLogin(event)" class="space-y-5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Nama Pengguna</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <i class="fa-solid fa-user text-sm"></i>
+            </span>
+            <input type="text" id="login-username" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition" placeholder="Masukkan username">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Kata Sandi</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <i class="fa-solid fa-lock text-sm"></i>
+            </span>
+            <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:bg-white transition" placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 px-4 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-800 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/30 transition duration-200 flex items-center justify-center gap-2 group">
+          <span>Masuk ke Aplikasi</span>
+          <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition"></i>
+        </button>
+      </form>
     </div>
-  </header>
+  </div>
 
-  <main class="content-area">
-
-    <!-- TAB DASHBOARD -->
-    <section id="sec-dashboard">
-      <div class="dashboard-grid">
-        <div class="stat-card accent-border">
-          <div class="title">Saldo Kas Resmi</div>
-          <div class="value" id="dash-saldo">Rp 0</div>
-        </div>
-        <div class="stat-card success-border">
-          <div class="title">Penerimaan Disahkan</div>
-          <div class="value" id="dash-penerimaan">Rp 0</div>
-        </div>
-        <div class="stat-card danger-border">
-          <div class="title">Pengeluaran Disahkan</div>
-          <div class="value" id="dash-pengeluaran">Rp 0</div>
-        </div>
-        <div class="stat-card">
-          <div class="title">Total Alokasi ST</div>
-          <div class="value" id="dash-alokasi">Rp 0</div>
-        </div>
-      </div>
-
-      <div class="dashboard-grid">
-        <div class="stat-card">
-          <div class="title">ST Dalam Kota</div>
-          <div class="value" id="dash-st-dk">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="title">ST Luar Kota</div>
-          <div class="value" id="dash-st-lk">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="title">Transaksi Pending</div>
-          <div class="value" id="dash-pending">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="title">Terakhir Diperbarui</div>
-          <div class="value" id="dash-updated" style="font-size: 0.9rem;">-</div>
-        </div>
-      </div>
-
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Informasi Pembayaran Bank BRI & QRIS</div>
-        </div>
-        <div class="form-row">
-          <div style="flex:1; border-right: 1px solid var(--border-color); padding-right: 1rem;">
-            <h4><i class="fa-solid fa-building-columns"></i> Rekening Bank BRI</h4>
-            <p style="margin-top:0.5rem; font-size:0.9rem;" id="info-bri-detail">Loading...</p>
+  <!-- VIEW MAIN APPLICATION -->
+  <div id="app-view" class="hidden w-full h-full flex flex-col md:flex-row overflow-hidden">
+    
+    <!-- SIDEBAR NAV -->
+    <aside class="w-full md:w-64 bg-brand-900 text-white flex flex-col flex-shrink-0 shadow-xl z-20">
+      <div class="p-5 border-b border-white/10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gold-500/20 border border-gold-500/40 flex items-center justify-center text-gold-400">
+            <i class="fa-solid fa-wallet text-lg"></i>
           </div>
-          <div style="flex:1; padding-left: 1rem;">
-            <h4><i class="fa-solid fa-qrcode"></i> QRIS Resmi</h4>
-            <p style="margin-top:0.5rem; font-size:0.9rem;" id="info-qris-detail">Loading...</p>
+          <span class="text-xl font-extrabold tracking-wide">KAS-<span class="text-gold-400">ST</span></span>
+        </div>
+      </div>
+
+      <nav class="flex-grow p-4 space-y-1 overflow-y-auto custom-scrollbar">
+        <button onclick="switchTab('dashboard')" class="nav-link active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-chart-line w-5"></i> Dashboard
+        </button>
+        <button onclick="switchTab('surat-tugas')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-file-invoice w-5"></i> Surat Tugas
+        </button>
+        <button onclick="switchTab('penerimaan')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-arrow-down-left w-5 text-emerald-400"></i> Penerimaan Kas
+        </button>
+        <button onclick="switchTab('pengeluaran')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-arrow-up-right w-5 text-rose-400"></i> Pengeluaran Kas
+        </button>
+        <button onclick="switchTab('buku-kas')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-book w-5"></i> Buku Kas
+        </button>
+        <button onclick="switchTab('rekonsiliasi')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+          <i class="fa-solid fa-scale-balanced w-5"></i> Rekonsiliasi
+        </button>
+        
+        <div class="pt-4 border-t border-white/10 admin-only">
+          <p class="px-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Administrator</p>
+          <button onclick="switchTab('pengaturan')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+            <i class="fa-solid fa-gears w-5"></i> Pengaturan
+          </button>
+          <button onclick="switchTab('users')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+            <i class="fa-solid fa-users w-5"></i> Pengguna
+          </button>
+          <button onclick="switchTab('audit-log')" class="nav-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition">
+            <i class="fa-solid fa-shield-halved w-5"></i> Audit Log
+          </button>
+        </div>
+      </nav>
+
+      <div class="p-4 border-t border-white/10 text-xs text-slate-400 flex items-center justify-between">
+        <span>KAS-ST System v1.1</span>
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-grow flex flex-col h-full overflow-hidden bg-slate-50">
+      
+      <!-- TOPBAR -->
+      <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-10 shadow-sm">
+        <h2 id="topbar-title" class="text-lg font-bold text-slate-800 tracking-tight capitalize">Dashboard</h2>
+        
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+            <span id="user-role-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-brand-500 text-white">ADMIN</span>
+            <span id="user-name-display" class="text-xs font-semibold text-slate-700">User</span>
           </div>
+          <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-2">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
         </div>
-      </div>
-    </section>
+      </header>
 
-    <!-- TAB SURAT TUGAS -->
-    <section id="sec-surat-tugas" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Master Data Surat Tugas (ST)</div>
-          <button class="btn btn-primary admin-only" onclick="openModalST()"><i class="fa-solid fa-plus"></i> Tambah ST</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>No. ST</th>
-              <th>Tanggal ST</th>
-              <th>Uraian</th>
-              <th>Jenis</th>
-              <th>Tarif</th>
-              <th>Alokasi</th>
-              <th>Status Bayar</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-st"></tbody>
-        </table>
-      </div>
-    </section>
+      <!-- CONTENT AREA -->
+      <main class="flex-grow p-6 overflow-y-auto custom-scrollbar">
 
-    <!-- TAB PENERIMAAN -->
-    <section id="sec-penerimaan" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Transaksi Penerimaan Kas</div>
-          <button class="btn btn-primary admin-only" onclick="openModalTrx('Penerimaan')"><i class="fa-solid fa-plus"></i> Catat Penerimaan</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>ID / Tgl</th>
-              <th>Kategori</th>
-              <th>Ref ST</th>
-              <th>Keterangan</th>
-              <th>Nominal</th>
-              <th>Metode</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-penerimaan"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- TAB PENGELUARAN -->
-    <section id="sec-pengeluaran" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Transaksi Pengeluaran Kas</div>
-          <button class="btn btn-primary admin-only" onclick="openModalTrx('Pengeluaran')"><i class="fa-solid fa-plus"></i> Catat Pengeluaran</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>ID / Tgl</th>
-              <th>Kategori</th>
-              <th>Keterangan</th>
-              <th>Nominal</th>
-              <th>Metode</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-pengeluaran"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- TAB BUKU KAS -->
-    <section id="sec-buku-kas" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Buku Kas & Arus Kas Resmi</div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>ID / Tgl</th>
-              <th>Jenis</th>
-              <th>Kategori</th>
-              <th>Keterangan</th>
-              <th>Masuk</th>
-              <th>Keluar</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-buku-kas"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- TAB REKONSILIASI -->
-    <section id="sec-rekonsiliasi" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Rekonsiliasi Saldo Kas</div>
-          <button class="btn btn-primary admin-only" onclick="openModalRecon()"><i class="fa-solid fa-plus"></i> Buat Rekonsiliasi</button>
-        </div>
-        <p style="font-size:0.9rem; color: var(--text-muted); margin-bottom:1rem;">Membandingkan Saldo Sistem dengan Saldo Aktual Bank / Rekening Resmi.</p>
-      </div>
-    </section>
-
-    <!-- TAB PENGATURAN (ADMIN ONLY) -->
-    <section id="sec-pengaturan" class="admin-only" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Pengaturan System & Tarif ST</div>
-        </div>
-        <form id="form-settings" onsubmit="handleSaveSettings(event)">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Tarif ST Dalam Kota (Rp)</label>
-              <input type="number" id="set-tarif-dk" class="form-control" required>
+        <!-- TAB DASHBOARD -->
+        <section id="sec-dashboard" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Saldo Kas Resmi</span>
+                <i class="fa-solid fa-wallet text-brand-500"></i>
+              </div>
+              <div id="dash-saldo" class="text-2xl font-extrabold text-brand-900">Rp 0</div>
             </div>
-            <div class="form-group">
-              <label>Tarif ST Luar Kota (Rp)</label>
-              <input type="number" id="set-tarif-lk" class="form-control" required>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Penerimaan Disahkan</span>
+                <i class="fa-solid fa-circle-arrow-down text-emerald-500"></i>
+              </div>
+              <div id="dash-penerimaan" class="text-2xl font-extrabold text-emerald-600">Rp 0</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Pengeluaran Disahkan</span>
+                <i class="fa-solid fa-circle-arrow-up text-rose-500"></i>
+              </div>
+              <div id="dash-pengeluaran" class="text-2xl font-extrabold text-rose-600">Rp 0</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Total Alokasi ST</span>
+                <i class="fa-solid fa-coins text-gold-500"></i>
+              </div>
+              <div id="dash-alokasi" class="text-2xl font-extrabold text-slate-800">Rp 0</div>
             </div>
           </div>
-          <div class="form-group">
-            <label>Nama Bank BRI</label>
-            <input type="text" id="set-bank-name" class="form-control">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Atas Nama Pemilik Rekening</label>
-              <input type="text" id="set-bank-owner" class="form-control">
-            </div>
-            <div class="form-group">
-              <label>Nomor Rekening BRI</label>
-              <input type="text" id="set-bank-acc" class="form-control">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-accent">Simpan Pengaturan</button>
-        </form>
-      </div>
-    </section>
 
-    <!-- TAB AUDIT LOG (ADMIN ONLY) -->
-    <section id="sec-audit-log" class="admin-only" style="display: none;">
-      <div class="card-panel">
-        <div class="panel-header">
-          <div class="panel-title">Audit Log Aktivitas System</div>
+          <!-- REKAP QUICK STATS -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-400 font-medium">ST Dalam Kota</p>
+                <h4 id="dash-st-dk" class="text-xl font-bold text-slate-700">0</h4>
+              </div>
+              <span class="px-2.5 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold">DK</span>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-400 font-medium">ST Luar Kota</p>
+                <h4 id="dash-st-lk" class="text-xl font-bold text-slate-700">0</h4>
+              </div>
+              <span class="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold">LK</span>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-400 font-medium">Pending Transaksi</p>
+                <h4 id="dash-pending" class="text-xl font-bold text-amber-600">0</h4>
+              </div>
+              <i class="fa-solid fa-clock text-amber-400"></i>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-400 font-medium">Terakhir Update</p>
+                <h4 id="dash-updated" class="text-xs font-bold text-slate-600">-</h4>
+              </div>
+              <i class="fa-solid fa-rotate text-slate-400"></i>
+            </div>
+          </div>
+
+          <!-- BANK & QRIS INFO -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">Informasi Pembayaran BRI & QRIS</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                <h4 class="font-bold text-brand-900 flex items-center gap-2 mb-2">
+                  <i class="fa-solid fa-building-columns text-brand-500"></i> Rekening Bank BRI
+                </h4>
+                <div id="info-bri-detail" class="text-sm text-slate-600 leading-relaxed">Loading...</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                <h4 class="font-bold text-brand-900 flex items-center gap-2 mb-2">
+                  <i class="fa-solid fa-qrcode text-brand-500"></i> QRIS Resmi
+                </h4>
+                <div id="info-qris-detail" class="text-sm text-slate-600 leading-relaxed">Loading...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB SURAT TUGAS -->
+        <section id="sec-surat-tugas" class="hidden space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-800">Master Data Surat Tugas (ST)</h3>
+                <p class="text-xs text-slate-400">Daftar alokasi dan status pembukuan ST</p>
+              </div>
+              <button onclick="openModalST()" class="admin-only px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl text-xs transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Tambah ST
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-400 font-semibold">
+                  <tr>
+                    <th class="px-5 py-3">No. ST</th>
+                    <th class="px-5 py-3">Tanggal ST</th>
+                    <th class="px-5 py-3">Uraian</th>
+                    <th class="px-5 py-3">Jenis</th>
+                    <th class="px-5 py-3">Tarif</th>
+                    <th class="px-5 py-3">Alokasi</th>
+                    <th class="px-5 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-st" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB PENERIMAAN -->
+        <section id="sec-penerimaan" class="hidden space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-800">Transaksi Penerimaan Kas</h3>
+                <p class="text-xs text-slate-400">Pencatatan kas masuk ke rekening/kas</p>
+              </div>
+              <button onclick="openModalTrx('Penerimaan')" class="admin-only px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl text-xs transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Catat Penerimaan
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-400 font-semibold">
+                  <tr>
+                    <th class="px-5 py-3">ID / Tgl</th>
+                    <th class="px-5 py-3">Kategori</th>
+                    <th class="px-5 py-3">Ref ST</th>
+                    <th class="px-5 py-3">Keterangan</th>
+                    <th class="px-5 py-3">Nominal</th>
+                    <th class="px-5 py-3">Metode</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-penerimaan" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB PENGELUARAN -->
+        <section id="sec-pengeluaran" class="hidden space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-800">Transaksi Pengeluaran Kas</h3>
+                <p class="text-xs text-slate-400">Pencatatan dana keluar dari kas</p>
+              </div>
+              <button onclick="openModalTrx('Pengeluaran')" class="admin-only px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl text-xs transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Catat Pengeluaran
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-400 font-semibold">
+                  <tr>
+                    <th class="px-5 py-3">ID / Tgl</th>
+                    <th class="px-5 py-3">Kategori</th>
+                    <th class="px-5 py-3">Keterangan</th>
+                    <th class="px-5 py-3">Nominal</th>
+                    <th class="px-5 py-3">Metode</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-pengeluaran" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB BUKU KAS -->
+        <section id="sec-buku-kas" class="hidden space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200">
+              <h3 class="font-bold text-slate-800">Buku Kas & Mutasi Arus Kas</h3>
+              <p class="text-xs text-slate-400">Laporan transaksi kas masuk dan keluar secara lengkap</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-400 font-semibold">
+                  <tr>
+                    <th class="px-5 py-3">ID / Tgl</th>
+                    <th class="px-5 py-3">Jenis</th>
+                    <th class="px-5 py-3">Kategori</th>
+                    <th class="px-5 py-3">Keterangan</th>
+                    <th class="px-5 py-3 text-emerald-600">Masuk</th>
+                    <th class="px-5 py-3 text-rose-600">Keluar</th>
+                    <th class="px-5 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-buku-kas" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB REKONSILIASI -->
+        <section id="sec-rekonsiliasi" class="hidden space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-800">Rekonsiliasi Saldo Kas</h3>
+                <p class="text-xs text-slate-400">Pencocokan saldo catatan sistem dengan fisik / saldo bank</p>
+              </div>
+              <button onclick="openModalRecon()" class="admin-only px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl text-xs transition">
+                <i class="fa-solid fa-plus"></i> Buat Rekonsiliasi
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB PENGATURAN (ADMIN ONLY) -->
+        <section id="sec-pengaturan" class="hidden space-y-4 admin-only">
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-2xl">
+            <h3 class="font-bold text-slate-800 mb-4">Pengaturan Sistem & Tarif</h3>
+            <form id="form-settings" onsubmit="handleSaveSettings(event)" class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Tarif ST Dalam Kota (Rp)</label>
+                  <input type="number" id="set-tarif-dk" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" required>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Tarif ST Luar Kota (Rp)</label>
+                  <input type="number" id="set-tarif-lk" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" required>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Bank</label>
+                <input type="text" id="set-bank-name" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Pemilik Rekening</label>
+                  <input type="text" id="set-bank-owner" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Rekening</label>
+                  <input type="text" id="set-bank-acc" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+              </div>
+              <button type="submit" class="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl text-xs transition">
+                Simpan Pengaturan
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- TAB AUDIT LOG (ADMIN ONLY) -->
+        <section id="sec-audit-log" class="hidden space-y-4 admin-only">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200">
+              <h3 class="font-bold text-slate-800">Audit Log Aktivitas System</h3>
+              <p class="text-xs text-slate-400">Riwayat riil aksi pengguna untuk keamanan data</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-400 font-semibold">
+                  <tr>
+                    <th class="px-5 py-3">Timestamp</th>
+                    <th class="px-5 py-3">Username</th>
+                    <th class="px-5 py-3">Aksi</th>
+                    <th class="px-5 py-3">Entitas</th>
+                    <th class="px-5 py-3">Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-audit" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- MODAL ST -->
+  <div id="modal-st" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 id="modal-st-title" class="font-bold text-slate-800">Form Surat Tugas</h3>
+        <button onclick="closeModal('modal-st')" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="form-st" onsubmit="handleSaveST(event)" class="p-6 space-y-4">
+        <input type="hidden" id="st-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor ST</label>
+          <input type="text" id="st-nomor" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Contoh: ST/001/2026">
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Username</th>
-              <th>Aksi</th>
-              <th>Entitas</th>
-              <th>Detail</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-audit"></tbody>
-        </table>
-      </div>
-    </section>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal ST</label>
+            <input type="date" id="st-tgl-st" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Pelaksanaan</label>
+            <input type="date" id="st-tgl-pelaksana" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis ST</label>
+          <select id="st-jenis" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+            <option value="Dalam Kota">Dalam Kota</option>
+            <option value="Luar Kota">Luar Kota</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Uraian Tugas</label>
+          <textarea id="st-uraian" required rows="3" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Detail kegiatan..."></textarea>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl text-xs transition">
+          Simpan Surat Tugas
+        </button>
+      </form>
+    </div>
+  </div>
 
-  </main>
-</div>
+  <!-- MODAL TRANSAKSI -->
+  <div id="modal-trx" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 id="modal-trx-title" class="font-bold text-slate-800">Catat Transaksi</h3>
+        <button onclick="closeModal('modal-trx')" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="form-trx" onsubmit="handleSaveTrx(event)" class="p-6 space-y-4">
+        <input type="hidden" id="trx-jenis">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Transaksi</label>
+          <input type="date" id="trx-tanggal" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+          <input type="text" id="trx-kategori" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Misal: Alokasi Kas / Konsumsi">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Referensi Nomor ST (Opsional)</label>
+          <input type="text" id="trx-ref-st" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm" placeholder="No ST terkait">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Keterangan</label>
+          <input type="text" id="trx-keterangan" required class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm" placeholder="Rincian transaksi">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+          <input type="number" id="trx-nominal" required min="1" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Metode</label>
+            <select id="trx-metode" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+              <option value="Tunai">Tunai</option>
+              <option value="BRI">Bank BRI</option>
+              <option value="QRIS">QRIS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">No. Ref / Struk</label>
+            <input type="text" id="trx-ref-bayar" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl text-xs transition">
+          Kirim Transaksi
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-white font-medium text-sm hidden transform transition duration-300"></div>
+
+  <script>
+    let SESSION_TOKEN = null;
+    let CURRENT_USER = null;
+    let APP_DATA = null;
+
+    window.onload = function() {
+      const token = localStorage.getItem("KAS_ST_TOKEN");
+      if (token) {
+        SESSION_TOKEN = token;
+        loadAppData();
+      }
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.className = `fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-white font-medium text-sm transition transform ${isError ? 'bg-rose-600' : 'bg-emerald-600'}`;
+      toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 3500);
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById("login-username").value;
+      const p = document.getElementById("login-password").value;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            SESSION_TOKEN = res.token;
+            localStorage.setItem("KAS_ST_TOKEN", res.token);
+            CURRENT_USER = res.user;
+            showToast("Login Berhasil!");
+            loadAppData();
+          } else {
+            showToast(res.message, true);
+          }
+        })
+        .withFailureHandler(err => showToast("Error Server: " + err.message, true))
+        .login(u, p);
+    }
+
+    function handleLogout() {
+      if (SESSION_TOKEN) {
+        google.script.run.logout(SESSION_TOKEN);
+      }
+      SESSION_TOKEN = null;
+      CURRENT_USER = null;
+      localStorage.removeItem("KAS_ST_TOKEN");
+      document.getElementById("app-view").classList.add("hidden");
+      document.getElementById("login-view").classList.remove("hidden");
+    }
+
+    function loadAppData() {
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            APP_DATA = res;
+            CURRENT_USER = res.user;
+            renderApp();
+          } else {
+            handleLogout();
+          }
+        })
+        .withFailureHandler(err => {
+          showToast("Sesi berakhir atau kesalahan server.", true);
+          handleLogout();
+        })
+        .getInitialData(SESSION_TOKEN);
+    }
+
+    function renderApp() {
+      document.getElementById("login-view").classList.add("hidden");
+      document.getElementById("app-view").classList.remove("hidden");
+
+      document.getElementById("user-name-display").innerText = CURRENT_USER.displayName;
+      document.getElementById("user-role-badge").innerText = CURRENT_USER.role;
+
+      const adminElems = document.querySelectorAll(".admin-only");
+      adminElems.forEach(el => {
+        el.style.display = CURRENT_USER.role === "ADMIN" ? "" : "none";
+      });
+
+      const dash = APP_DATA.dashboard;
+      document.getElementById("dash-saldo").innerText = formatRupiah(dash.saldoResmi);
+      document.getElementById("dash-penerimaan").innerText = formatRupiah(dash.totalKasMasuk);
+      document.getElementById("dash-pengeluaran").innerText = formatRupiah(dash.totalKasKeluar);
+      document.getElementById("dash-alokasi").innerText = formatRupiah(dash.totalAlokasi);
+      document.getElementById("dash-st-dk").innerText = dash.countDalamKota;
+      document.getElementById("dash-st-lk").innerText = dash.countLuarKota;
+      document.getElementById("dash-pending").innerText = dash.pendingTrx;
+      document.getElementById("dash-updated").innerText = dash.lastUpdated;
+
+      const s = APP_DATA.settings;
+      document.getElementById("info-bri-detail").innerHTML = `
+        <div class="font-bold text-slate-800">${s.BANK_NAME || 'BRI'}</div>
+        <div>No. Rek: <span class="font-semibold text-slate-700">${s.BANK_ACCOUNT_NUMBER || '-'}</span></div>
+        <div>A.N: ${s.BANK_ACCOUNT_NAME || '-'}</div>
+      `;
+      document.getElementById("info-qris-detail").innerHTML = `
+        <div class="font-bold text-slate-800">${s.QRIS_RECEIVER_NAME || '-'}</div>
+        <div class="text-xs text-slate-400 mt-1">${s.QRIS_NOTE || 'Dapat menggunakan M-Banking / E-Wallet'}</div>
+      `;
+
+      renderSuratTugasTable();
+      renderTransaksiTable();
+      renderBukuKasTable();
+
+      if (CURRENT_USER.role === "ADMIN") {
+        document.getElementById("set-tarif-dk").value = s.TARIF_DALAM_KOTA || 10000;
+        document.getElementById("set-tarif-lk").value = s.TARIF_LUAR_KOTA || 20000;
+        document.getElementById("set-bank-name").value = s.BANK_NAME || '';
+        document.getElementById("set-bank-owner").value = s.BANK_ACCOUNT_NAME || '';
+        document.getElementById("set-bank-acc").value = s.BANK_ACCOUNT_NUMBER || '';
+        loadAuditLogs();
+      }
+    }
+
+    function switchTab(tabId) {
+      const tabs = ['dashboard', 'surat-tugas', 'penerimaan', 'pengeluaran', 'buku-kas', 'rekonsiliasi', 'pengaturan', 'users', 'audit-log'];
+      tabs.forEach(t => {
+        const sec = document.getElementById('sec-' + t);
+        if (sec) {
+          if (t === tabId) sec.classList.remove('hidden');
+          else sec.classList.add('hidden');
+        }
+      });
+
+      const links = document.querySelectorAll('.nav-link');
+      links.forEach(l => l.classList.remove('bg-white/10', 'text-white'));
+
+      document.getElementById('topbar-title').innerText = tabId.replace('-', ' ');
+    }
+
+    function renderSuratTugasTable() {
+      const tbody = document.getElementById("tbody-st");
+      tbody.innerHTML = "";
+      APP_DATA.suratTugas.forEach(st => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="px-5 py-3 font-semibold text-slate-800">${st.nomorST}</td>
+          <td class="px-5 py-3 text-slate-600">${st.tanggalST}</td>
+          <td class="px-5 py-3 text-slate-600">${st.uraian}</td>
+          <td class="px-5 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${st.jenisST === 'Dalam Kota' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}">${st.jenisST}</span></td>
+          <td class="px-5 py-3 text-slate-700 font-medium">${formatRupiah(st.tarif)}</td>
+          <td class="px-5 py-3 text-slate-700 font-medium">${formatRupiah(st.nominalAlokasi)}</td>
+          <td class="px-5 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${st.statusPembayaran === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${st.statusPembayaran}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTransaksiTable() {
+      const tbodyPen = document.getElementById("tbody-penerimaan");
+      const tbodyPeng = document.getElementById("tbody-pengeluaran");
+      tbodyPen.innerHTML = "";
+      tbodyPeng.innerHTML = "";
+
+      APP_DATA.transaksi.forEach(t => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition";
+        const isApprovable = CURRENT_USER.role === "ADMIN" && t.status === "Menunggu Verifikasi";
+        
+        let actions = "-";
+        if (isApprovable) {
+          actions = `
+            <div class="flex items-center gap-1">
+              <button onclick="handleValidateTrx('${t.id}', 'APPROVE')" class="w-7 h-7 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></button>
+              <button onclick="handleValidateTrx('${t.id}', 'REJECT')" class="w-7 h-7 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          `;
+        }
+
+        let badgeClass = "bg-amber-50 text-amber-600";
+        if (t.status === "Disahkan") badgeClass = "bg-emerald-50 text-emerald-600";
+        if (t.status === "Ditolak") badgeClass = "bg-rose-50 text-rose-600";
+
+        if (t.jenisTransaksi === "Penerimaan") {
+          tr.innerHTML = `
+            <td class="px-5 py-3 font-semibold text-slate-800">${t.id}<br><span class="text-xs text-slate-400 font-normal">${t.tanggal}</span></td>
+            <td class="px-5 py-3 text-slate-600">${t.kategori}</td>
+            <td class="px-5 py-3 text-slate-600">${t.referensiST || '-'}</td>
+            <td class="px-5 py-3 text-slate-600">${t.keterangan}</td>
+            <td class="px-5 py-3 font-semibold text-emerald-600">${formatRupiah(t.kasMasuk)}</td>
+            <td class="px-5 py-3 text-slate-600">${t.metodePembayaran}</td>
+            <td class="px-5 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">${t.status}</span></td>
+            <td class="px-5 py-3">${actions}</td>
+          `;
+          tbodyPen.appendChild(tr);
+        } else {
+          tr.innerHTML = `
+            <td class="px-5 py-3 font-semibold text-slate-800">${t.id}<br><span class="text-xs text-slate-400 font-normal">${t.tanggal}</span></td>
+            <td class="px-5 py-3 text-slate-600">${t.kategori}</td>
+            <td class="px-5 py-3 text-slate-600">${t.keterangan}</td>
+            <td class="px-5 py-3 font-semibold text-rose-600">${formatRupiah(t.kasKeluar)}</td>
+            <td class="px-5 py-3 text-slate-600">${t.metodePembayaran}</td>
+            <td class="px-5 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">${t.status}</span></td>
+            <td class="px-5 py-3">${actions}</td>
+          `;
+          tbodyPeng.appendChild(tr);
+        }
+      });
+    }
+
+    function renderBukuKasTable() {
+      const tbody = document.getElementById("tbody-buku-kas");
+      tbody.innerHTML = "";
+      APP_DATA.transaksi.forEach(t => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="px-5 py-3 font-semibold text-slate-800">${t.id}<br><span class="text-xs text-slate-400 font-normal">${t.tanggal}</span></td>
+          <td class="px-5 py-3 text-slate-600">${t.jenisTransaksi}</td>
+          <td class="px-5 py-3 text-slate-600">${t.kategori}</td>
+          <td class="px-5 py-3 text-slate-600">${t.keterangan}</td>
+          <td class="px-5 py-3 font-semibold text-emerald-600">${t.kasMasuk > 0 ? formatRupiah(t.kasMasuk) : '-'}</td>
+          <td class="px-5 py-3 font-semibold text-rose-600">${t.kasKeluar > 0 ? formatRupiah(t.kasKeluar) : '-'}</td>
+          <td class="px-5 py-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${t.status === 'Disahkan' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">${t.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModalST() {
+      document.getElementById("form-st").reset();
+      document.getElementById("st-id").value = "";
+      document.getElementById("modal-st-title").innerText = "Tambah Surat Tugas Baru";
+      document.getElementById("modal-st").classList.remove("hidden");
+      document.getElementById("modal-st").classList.add("flex");
+    }
+
+    function openModalTrx(jenis) {
+      document.getElementById("form-trx").reset();
+      document.getElementById("trx-jenis").value = jenis;
+      document.getElementById("trx-tanggal").value = new Date().toISOString().split('T')[0];
+      document.getElementById("modal-trx-title").innerText = "Catat Transaksi " + jenis;
+      document.getElementById("modal-trx").classList.remove("hidden");
+      document.getElementById("modal-trx").classList.add("flex");
+    }
+
+    function closeModal(modalId) {
+      const el = document.getElementById(modalId);
+      el.classList.add("hidden");
+      el.classList.remove("flex");
+    }
+
+    function handleSaveST(e) {
+      e.preventDefault();
+      const payload = {
+        id: document.getElementById("st-id").value,
+        nomorST: document.getElementById("st-nomor").value,
+        tanggalST: document.getElementById("st-tgl-st").value,
+        tanggalPelaksanaan: document.getElementById("st-tgl-pelaksana").value,
+        jenisST: document.getElementById("st-jenis").value,
+        uraian: document.getElementById("st-uraian").value
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            showToast(res.message);
+            closeModal("modal-st");
+            loadAppData();
+          } else {
+            showToast(res.message, true);
+          }
+        })
+        .saveST(SESSION_TOKEN, payload);
+    }
+
+    function handleSaveTrx(e) {
+      e.preventDefault();
+      const payload = {
+        jenisTransaksi: document.getElementById("trx-jenis").value,
+        tanggal: document.getElementById("trx-tanggal").value,
+        kategori: document.getElementById("trx-kategori").value,
+        referensiST: document.getElementById("trx-ref-st").value,
+        keterangan: document.getElementById("trx-keterangan").value,
+        nominal: document.getElementById("trx-nominal").value,
+        metodePembayaran: document.getElementById("trx-metode").value,
+        referensiPembayaran: document.getElementById("trx-ref-bayar").value
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            showToast(res.message);
+            closeModal("modal-trx");
+            loadAppData();
+          } else {
+            showToast(res.message, true);
+          }
+        })
+        .saveTransaction(SESSION_TOKEN, payload);
+    }
+
+    function handleValidateTrx(trxId, action) {
+      let notes = "";
+      if (action === "REJECT") {
+        notes = prompt("Masukkan alasan penolakan transaksi:");
+        if (notes === null) return;
+      }
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            showToast(res.message);
+            loadAppData();
+          } else {
+            showToast(res.message, true);
+          }
+        })
+        .validateTransaction(SESSION_TOKEN, trxId, action, notes);
+    }
+
+    function handleSaveSettings(e) {
+      e.preventDefault();
+      const payload = {
+        TARIF_DALAM_KOTA: document.getElementById("set-tarif-dk").value,
+        TARIF_LUAR_KOTA: document.getElementById("set-tarif-lk").value,
+        BANK_NAME: document.getElementById("set-bank-name").value,
+        BANK_ACCOUNT_NAME: document.getElementById("set-bank-owner").value,
+        BANK_ACCOUNT_NUMBER: document.getElementById("set-bank-acc").value
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            showToast(res.message);
+            loadAppData();
+          } else {
+            showToast(res.message, true);
+          }
+        })
+        .saveSettings(SESSION_TOKEN, payload);
+    }
+
+    function loadAuditLogs() {
+      google.script.run
+        .withSuccessHandler(logs => {
+          const tbody = document.getElementById("tbody-audit");
+          tbody.innerHTML = "";
+          logs.forEach(l => {
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50 transition";
+            tr.innerHTML = `
+              <td class="px-5 py-3 text-xs text-slate-500">${l.timestamp}</td>
+              <td class="px-5 py-3 font-semibold text-slate-800">${l.username}</td>
+              <td class="px-5 py-3 text-slate-600">${l.action}</td>
+              <td class="px-5 py-3 text-slate-600">${l.entity} (${l.entityId})</td>
+              <td class="px-5 py-3 text-slate-500 text-xs">${l.details}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        })
+        .getAuditLogs(SESSION_TOKEN);
+    }
+
+    function formatRupiah(num) {
+      return "Rp " + Number(num || 0).toLocaleString("id-ID");
+    }
+  </script>
+</body>
+</html>
